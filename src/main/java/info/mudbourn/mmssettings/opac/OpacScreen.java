@@ -28,7 +28,8 @@ class OpacScreen extends Screen {
     private static final Pattern FAMILY = Pattern.compile("^(.+?)(?:By)?(Players|Mobs|Other)$");
     private static final int ROW_HEIGHT = 24;
     private static final int VALUE_WIDTH = 130;
-    private static final int CELL_WIDTH = 66;
+    private static final int CATEGORY_WIDTH = 60;
+    private static final int CATEGORY_GAP = 2;
 
     private enum Column {
         PLAYERS("players"),
@@ -53,6 +54,9 @@ class OpacScreen extends Screen {
     private String subConfig;
     private boolean alphabetical;
     private String search = "";
+    private String openSection;
+    private String openFamily;
+    private Column openColumn;
     private EditBox searchBox;
     private RowList list;
     private boolean writeFailed;
@@ -72,6 +76,7 @@ class OpacScreen extends Screen {
             Button.builder(kind.label(), button -> {
                 kind = kind.next();
                 subConfig = null;
+                closeCategory();
                 rebuildWidgets();
             })
                 .bounds(left, 22, third, 20)
@@ -80,6 +85,7 @@ class OpacScreen extends Screen {
         addRenderableWidget(
             Button.builder(subLabel(), button -> {
                 cycleSubConfig();
+                closeCategory();
                 rebuildWidgets();
             })
                 .bounds(left + third + 4, 22, third, 20)
@@ -184,9 +190,28 @@ class OpacScreen extends Screen {
         return refs;
     }
 
+    private void closeCategory() {
+        openSection = null;
+        openFamily = null;
+        openColumn = null;
+    }
+
+    private void openCategory(String section, String family, Column column) {
+        openSection = section;
+        openFamily = family;
+        openColumn = column;
+        refill();
+    }
+
     private void refill() {
         list.clearRows();
         List<OptionRef> refs = visibleOptions();
+
+        if (openColumn != null) {
+            fillCategory(refs);
+
+            return;
+        }
 
         if (refs.isEmpty()) {
             list.addRow(new MessageRow(Component.translatable("mms_settings.opac.empty")));
@@ -201,12 +226,7 @@ class OpacScreen extends Screen {
             return;
         }
 
-        Map<String, List<OptionRef>> sections = new LinkedHashMap<>();
-
-        for (OptionRef ref : refs) {
-            sections.computeIfAbsent(ref.section(), key -> new ArrayList<>()).add(ref);
-        }
-
+        Map<String, List<OptionRef>> sections = sectionsOf(refs);
         boolean searching = !search.isBlank();
 
         for (Map.Entry<String, List<OptionRef>> section : sections.entrySet()) {
@@ -214,12 +234,45 @@ class OpacScreen extends Screen {
             list.addRow(new HeaderRow(section.getKey(), section.getValue().size(), open));
 
             if (open) {
-                addSection(section.getValue());
+                addSection(section.getKey(), section.getValue(), searching);
             }
         }
     }
 
-    private void addSection(List<OptionRef> refs) {
+    private void fillCategory(List<OptionRef> refs) {
+        List<OptionRef> section = sectionsOf(refs).getOrDefault(openSection, List.of());
+        List<OptionRef> members = section.stream()
+            .filter(ref -> belongs(ref, openFamily, openColumn))
+            .toList();
+        String crumb = sectionTitle(openSection) + " > " + humanize(openFamily) + " > " + openColumn.label().getString();
+
+        list.addRow(new BackRow(Component.literal(crumb)));
+
+        if (members.isEmpty()) {
+            list.addRow(new MessageRow(Component.translatable("mms_settings.opac.empty")));
+        }
+
+        members.forEach(ref -> list.addRow(new OptionRow(ref, ref.name)));
+    }
+
+    private static boolean belongs(OptionRef ref, String family, Column column) {
+        String segment = ref.lastSegment();
+        String name = column.key.substring(0, 1).toUpperCase(Locale.ROOT) + column.key.substring(1);
+
+        return segment.startsWith(family) && segment.contains(name);
+    }
+
+    private static Map<String, List<OptionRef>> sectionsOf(List<OptionRef> refs) {
+        Map<String, List<OptionRef>> sections = new LinkedHashMap<>();
+
+        for (OptionRef ref : refs) {
+            sections.computeIfAbsent(ref.section(), key -> new ArrayList<>()).add(ref);
+        }
+
+        return sections;
+    }
+
+    private static Map<String, EnumMap<Column, OptionRef>> familiesOf(List<OptionRef> refs) {
         Map<String, EnumMap<Column, OptionRef>> families = new LinkedHashMap<>();
 
         for (OptionRef ref : refs) {
@@ -231,20 +284,24 @@ class OpacScreen extends Screen {
             }
         }
 
-        Set<OptionRef> grouped = new HashSet<>();
         families.values().removeIf(cells -> cells.size() < 2);
-        families.values().forEach(cells -> grouped.addAll(cells.values()));
+
+        return families;
+    }
+
+    private void addSection(String key, List<OptionRef> refs, boolean searching) {
+        Map<String, EnumMap<Column, OptionRef>> families = searching ? Map.of() : familiesOf(refs);
 
         for (OptionRef ref : refs) {
-            if (!grouped.contains(ref)) {
+            boolean grouped = families.entrySet().stream()
+                .anyMatch(family -> family.getValue().keySet().stream().anyMatch(column -> belongs(ref, family.getKey(), column)));
+
+            if (!grouped) {
                 list.addRow(new OptionRow(ref, ref.name));
             }
         }
 
-        if (!families.isEmpty()) {
-            list.addRow(new MatrixHeaderRow());
-            families.forEach((base, cells) -> list.addRow(new MatrixRow(humanize(base), cells)));
-        }
+        families.forEach((base, cells) -> list.addRow(new FamilyRow(key, base, cells.keySet())));
     }
 
     private static String humanize(String camel) {
@@ -353,42 +410,61 @@ class OpacScreen extends Screen {
         }
     }
 
-    private class MatrixHeaderRow extends RowList.Row {
-        @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
-            int start = x + width - CELL_WIDTH * 3 - 4;
+    private class BackRow extends RowList.Row {
+        private final Button back;
+        private final Component crumb;
 
-            for (Column column : Column.values()) {
-                graphics.drawCenteredString(font, column.label(), start + column.ordinal() * (CELL_WIDTH + 2) + CELL_WIDTH / 2, y + 6, 0xFFAAAAAA);
-            }
-        }
-    }
-
-    private class MatrixRow extends RowList.Row {
-        private final String label;
-        private final Map<Column, AbstractWidget> cells = new EnumMap<>(Column.class);
-
-        MatrixRow(String label, Map<Column, OptionRef> options) {
-            this.label = label;
-            options.forEach((column, ref) -> {
-                AbstractWidget cell = OptionControl.create(ref, CELL_WIDTH, OpacScreen.this::onWriteFailed).get(0);
-                cells.put(column, add(cell));
-            });
+        BackRow(Component crumb) {
+            this.crumb = crumb;
+            this.back = add(
+                Button.builder(Component.translatable("mms_settings.opac.back"), button -> {
+                    closeCategory();
+                    refill();
+                })
+                    .size(60, 20)
+                    .build()
+            );
         }
 
         @Override
         protected void layout(int x, int y, int width, int height) {
-            int start = x + width - CELL_WIDTH * 3 - 4;
+            back.setX(x);
+            back.setY(y);
+        }
 
-            cells.forEach((column, cell) -> {
-                cell.setX(start + column.ordinal() * (CELL_WIDTH + 2));
-                cell.setY(y);
+        @Override
+        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            graphics.drawString(font, font.plainSubstrByWidth(crumb.getString(), width - 72), x + 68, y + 6, 0xFFFFFFFF);
+        }
+    }
+
+    private class FamilyRow extends RowList.Row {
+        private final String label;
+        private final Map<Column, Button> buttons = new EnumMap<>(Column.class);
+
+        FamilyRow(String section, String family, Set<Column> columns) {
+            this.label = humanize(family);
+            columns.forEach(column -> buttons.put(column, add(
+                Button.builder(column.label(), button -> openCategory(section, family, column))
+                    .size(CATEGORY_WIDTH, 20)
+                    .build()
+            )));
+        }
+
+        @Override
+        protected void layout(int x, int y, int width, int height) {
+            int start = x + width - (CATEGORY_WIDTH + CATEGORY_GAP) * Column.values().length + CATEGORY_GAP;
+
+            buttons.forEach((column, button) -> {
+                button.setX(start + column.ordinal() * (CATEGORY_WIDTH + CATEGORY_GAP));
+                button.setY(y);
             });
         }
 
         @Override
         protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
-            graphics.drawString(font, font.plainSubstrByWidth(label, width - CELL_WIDTH * 3 - 14), x + 4, y + 6, 0xFFFFFFFF);
+            int room = width - (CATEGORY_WIDTH + CATEGORY_GAP) * Column.values().length - 4;
+            graphics.drawString(font, font.plainSubstrByWidth(label, room), x + 4, y + 6, 0xFFFFFFFF);
         }
     }
 }

@@ -40,5 +40,6 @@
   "mms_settings.opac.col.players": "Players",
   "mms_settings.opac.col.mobs": "Mobs",
   "mms_settings.opac.col.other": "Other",
-  "mms_settings.opac.general": "General"
+  "mms_settings.opac.general": "General",
+  "mms_settings.opac.back": "< Back"
 }

@@ -23,7 +23,9 @@ search. The hub is also the Mod Menu config screen of this mod.
 
 - Configs: my, party, default, server, wilderness, expired, plus sub-configs.
 - Options are grouped into collapsible sections by id prefix, or sorted A-Z.
-- Option families named "X by Players / Mobs / Other" render as a matrix.
+- Option families named "X by Players / Mobs / Other" show as one row per
+  setting with Players, Mobs and Other buttons. Each opens a page with that
+  setting's options for the category and a Back button. Search shows them inline.
 - Search matches the translated name and the option id.
 - Comments show as tooltips; options the player cannot change are greyed out.
 - Changes go through OPAC's own client sync path (`setCastValue` then
