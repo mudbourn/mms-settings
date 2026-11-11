@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "info.mudbourn.mmssettings.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "info.mudbourn.mmssettings.MmsSettingsMixinPlugin",
+  "client": [
+    "ConfigMenuMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

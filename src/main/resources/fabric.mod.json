@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "mms_settings",
+  "version": "${version}",
+  "name": "MMS Settings",
+  "description": "Client-side settings hub and a grouped, searchable view of Open Parties and Claims player configs.",
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "info.mudbourn.mmssettings.MmsSettingsClient"
+    ],
+    "modmenu": [
+      "info.mudbourn.mmssettings.ModMenuEntry"
+    ]
+  },
+  "mixins": [
+    "mms_settings.opac.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "openpartiesandclaims": "~0.33"
+  },
+  "breaks": {
+    "openpartiesandclaims": [
+      "<0.33.0",
+      ">=0.34.0"
+    ]
+  }
+}

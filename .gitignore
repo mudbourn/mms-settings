@@ -1,0 +1,16 @@
+.gradle/
+build/
+run/
+
+# Compile-only redistributables, several ARR; sourced from the private mms-libs.
+libs/
+
+.DS_Store
+*.pem
+*.log
+*.txt
+*.md
+!README.md
+!docs/*.md
+
+.claude/settings.local.json
