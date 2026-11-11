@@ -30,6 +30,16 @@ final class Targets {
             tiles.add(new Tile(label("opac"), OpacScreens::create, false));
         }
 
+        if (FabricLoader.getInstance().isModLoaded("opacui")) {
+            tiles.add(new Tile(label("opacui"),
+                parent -> construct("mervyn.opacui.client.gui.PartyScreen", parent), true));
+        }
+
+        if (FabricLoader.getInstance().isModLoaded("origins-legacy")) {
+            tiles.add(new Tile(label("origin"),
+                parent -> construct("io.github.apace100.origins.screen.ViewOriginScreen", null), true));
+        }
+
         mod("voicechat", "voicechat", "de.maxhenkel.voicechat.gui.VoiceChatSettingsScreen", tiles);
         mod("xaerominimap", "xaerominimap", null, tiles);
 
@@ -61,6 +71,19 @@ final class Targets {
             throw new IllegalStateException("MMS Economy hub request not found", error);
         }
         return null;
+    }
+
+    // Opens a screen by class name. A null parent means the screen takes no arguments.
+    private static Screen construct(String className, Screen parent) {
+        try {
+            Class<?> type = Class.forName(className);
+            Object screen = parent == null
+                ? type.getDeclaredConstructor().newInstance()
+                : type.getDeclaredConstructor(Screen.class).newInstance(parent);
+            return (Screen) screen;
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Could not open " + className, error);
+        }
     }
 
     private static Component label(String key) {
