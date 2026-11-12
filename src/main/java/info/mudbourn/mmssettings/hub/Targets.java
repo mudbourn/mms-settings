@@ -52,6 +52,10 @@ final class Targets {
             tiles.add(new Tile(label("mms_economy"), Targets::economyHub, true));
         }
 
+        if (FabricLoader.getInstance().isModLoaded("mms_combat")) {
+            tiles.add(new Tile(label("loadout"), Targets::loadout, true));
+        }
+
         tiles.add(new Tile(label("controls"), parent -> new KeyBindsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("sounds"), parent -> new SoundOptionsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("video"), parent -> new VideoSettingsScreen(parent, Minecraft.getInstance(), Minecraft.getInstance().options), false));
@@ -59,8 +63,7 @@ final class Targets {
         return tiles;
     }
 
-    // Economy's hub is opened by the server: ask for it the same way its own key does.
-    // The hub closes, and economy's OpenHub receiver puts its screen up.
+    // Asks the server for economy's hub and closes this one.
     private static Screen economyHub(Screen parent) {
         try {
             Object request = Class.forName("info.mudbourn.mmseconomy.network.EconomyNetworking$RequestHub")
@@ -70,6 +73,12 @@ final class Targets {
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("MMS Economy hub request not found", error);
         }
+        return null;
+    }
+
+    // Runs /loadout so the server opens the loadout screen, and closes this one.
+    private static Screen loadout(Screen parent) {
+        Minecraft.getInstance().player.connection.sendCommand("loadout");
         return null;
     }
 
