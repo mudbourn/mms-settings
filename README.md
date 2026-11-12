@@ -13,25 +13,37 @@ config factory first, then from the mod's own screen class by reflection.
 - Simple Voice Chat settings
 - Xaero's Minimap settings and the waypoints menu (waypoints need a world)
 - Better Combat settings
+- Iris shader pack menu (Shaders)
+- Distant Horizons settings
 - MMS Economy, when it exposes a Mod Menu config screen
 - Controls, Music and Sounds, Video Settings
 
 "All mods" lists every Mod Menu config screen and the files in `config/`, with
 search. The hub is also the Mod Menu config screen of this mod.
 
+## Speedometer
+
+`/speedometer` toggles a blocks-per-second readout beside the offhand slot,
+on the side away from the main hand. It averages the last half second of
+movement, vertical included.
+
 ## Open Parties and Claims view
 
 - Configs: my, party, default, server, wilderness, expired, plus sub-configs.
-- Options are grouped into collapsible sections by id prefix, or sorted A-Z.
-- Option families named "X by Players / Mobs / Other" show as one row per
-  setting with Players, Mobs and Other buttons. Each opens a page with that
-  setting's options for the category and a Back button. Search shows them inline.
-- Search matches the translated name and the option id.
+- Options sit in folders that follow the option id, opened one page at a time
+  with a Back button and a path line. Labels use OPAC's own option names.
+- Settings with Players, Mobs and Other versions sit on their own "By Players /
+  Mobs / Other" page in each folder. One switch at the top picks the category
+  and every row shows and edits that category's value.
+- Search lists every matching option on one page, by name or id.
 - Comments show as tooltips; options the player cannot change are greyed out.
+- "Edit in OPAC" opens OPAC's screen for the current config (player groups,
+  new sub-configs). "OPAC main menu" opens OPAC's main menu, which holds the
+  claiming mode (claim as yourself or as the server).
 - Changes go through OPAC's own client sync path (`setCastValue` then
   `PlayerConfigClientSynchronizer.syncToServer`), resolved by reflection in
-  `OpacWriter`. If that fails the failure is logged once, a notice is shown, and
-  the "Open OPAC screen" button opens OPAC's original screen.
+  `OpacWriter`. If that fails the failure is logged once, a notice is shown and
+  "Edit in OPAC" stays available.
 - An "MMS view" button is added to OPAC's main config menu through an optional
   mixin that is skipped when OPAC is absent.
 

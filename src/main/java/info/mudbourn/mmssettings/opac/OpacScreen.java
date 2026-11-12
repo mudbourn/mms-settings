@@ -3,12 +3,11 @@ package info.mudbourn.mmssettings.opac;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,10 +25,9 @@ import xaero.pac.client.player.config.api.IPlayerConfigClientStorageManagerAPI;
 
 class OpacScreen extends Screen {
     private static final Pattern FAMILY = Pattern.compile("^(.+?)(?:By)?(Players|Mobs|Other)$");
+    private static final Pattern CATEGORY_WORDS = Pattern.compile("(?i)\\s*\\b(by\\s+)?(players?|mobs?|other)\\b");
     private static final int ROW_HEIGHT = 24;
-    private static final int VALUE_WIDTH = 130;
-    private static final int CATEGORY_WIDTH = 60;
-    private static final int CATEGORY_GAP = 2;
+    private static final int VALUE_WIDTH = 110;
 
     private enum Column {
         PLAYERS("players"),
@@ -49,15 +47,12 @@ class OpacScreen extends Screen {
 
     private final Screen parent;
     private final IPlayerConfigClientStorageManagerAPI manager = OpenPACClientAPI.get().getPlayerConfigClientStorageManager();
-    private final Set<String> expanded = new HashSet<>();
     private ConfigKind kind = ConfigKind.MY;
     private String subConfig;
-    private boolean alphabetical;
     private String search = "";
-    private String openSection;
-    private String openFamily;
-    private Column openColumn;
-    private EditBox searchBox;
+    private List<String> folder = List.of();
+    private boolean byCategory;
+    private Column selected = Column.PLAYERS;
     private RowList list;
     private boolean writeFailed;
 
@@ -76,7 +71,8 @@ class OpacScreen extends Screen {
             Button.builder(kind.label(), button -> {
                 kind = kind.next();
                 subConfig = null;
-                closeCategory();
+                folder = List.of();
+                byCategory = false;
                 rebuildWidgets();
             })
                 .bounds(left, 22, third, 20)
@@ -85,7 +81,6 @@ class OpacScreen extends Screen {
         addRenderableWidget(
             Button.builder(subLabel(), button -> {
                 cycleSubConfig();
-                closeCategory();
                 rebuildWidgets();
             })
                 .bounds(left + third + 4, 22, third, 20)
@@ -93,17 +88,14 @@ class OpacScreen extends Screen {
         );
         addRenderableWidget(
             Button.builder(
-                Component.translatable(alphabetical ? "mms_settings.opac.sort_alpha" : "mms_settings.opac.sort_grouped"),
-                button -> {
-                    alphabetical = !alphabetical;
-                    rebuildWidgets();
-                }
+                Component.translatable("mms_settings.opac.original"),
+                button -> kind.openOriginal(manager, this, parent)
             )
                 .bounds(left + (third + 4) * 2, 22, third, 20)
                 .build()
         );
 
-        searchBox = new EditBox(font, left, 46, RowList.ROW_WIDTH, 20, Component.translatable("mms_settings.search"));
+        EditBox searchBox = new EditBox(font, left, 46, RowList.ROW_WIDTH, 20, Component.translatable("mms_settings.search"));
         searchBox.setHint(Component.translatable("mms_settings.search"));
         searchBox.setValue(search);
         searchBox.setResponder(text -> {
@@ -121,8 +113,8 @@ class OpacScreen extends Screen {
         );
         addRenderableWidget(
             Button.builder(
-                Component.translatable("mms_settings.opac.original"),
-                button -> kind.openOriginal(manager, this, parent)
+                Component.translatable("mms_settings.opac.menu"),
+                button -> OpenPACClientAPI.get().openMainMenuScreen(this, parent)
             )
                 .bounds(width / 2 + 4, height - 26, 150, 20)
                 .build()
@@ -166,6 +158,12 @@ class OpacScreen extends Screen {
         writeFailed = true;
     }
 
+    private void open(List<String> path) {
+        folder = path;
+        byCategory = false;
+        refill();
+    }
+
     private List<OptionRef> visibleOptions() {
         IPlayerConfigClientStorageAPI storage = activeStorage();
         String needle = search.toLowerCase(Locale.ROOT).trim();
@@ -190,28 +188,9 @@ class OpacScreen extends Screen {
         return refs;
     }
 
-    private void closeCategory() {
-        openSection = null;
-        openFamily = null;
-        openColumn = null;
-    }
-
-    private void openCategory(String section, String family, Column column) {
-        openSection = section;
-        openFamily = family;
-        openColumn = column;
-        refill();
-    }
-
     private void refill() {
         list.clearRows();
         List<OptionRef> refs = visibleOptions();
-
-        if (openColumn != null) {
-            fillCategory(refs);
-
-            return;
-        }
 
         if (refs.isEmpty()) {
             list.addRow(new MessageRow(Component.translatable("mms_settings.opac.empty")));
@@ -219,57 +198,65 @@ class OpacScreen extends Screen {
             return;
         }
 
-        if (alphabetical) {
+        if (!search.isBlank()) {
             refs.sort(Comparator.comparing(ref -> ref.name.getString().toLowerCase(Locale.ROOT)));
-            refs.forEach(ref -> list.addRow(new OptionRow(ref, ref.name)));
+            refs.forEach(ref -> list.addRow(new OptionRow(ref)));
 
             return;
         }
 
-        Map<String, List<OptionRef>> sections = sectionsOf(refs);
-        boolean searching = !search.isBlank();
+        List<OptionRef> here = refs.stream()
+            .filter(ref -> ref.path.subList(0, ref.path.size() - 1).equals(folder))
+            .toList();
 
-        for (Map.Entry<String, List<OptionRef>> section : sections.entrySet()) {
-            boolean open = searching || expanded.contains(section.getKey());
-            list.addRow(new HeaderRow(section.getKey(), section.getValue().size(), open));
+        Map<String, EnumMap<Column, OptionRef>> families = familiesOf(here);
 
-            if (open) {
-                addSection(section.getKey(), section.getValue(), searching);
+        if (!folder.isEmpty() || byCategory) {
+            list.addRow(new BackRow());
+        }
+
+        if (byCategory) {
+            list.addRow(new SwitchRow());
+            families.values().stream()
+                .filter(cells -> cells.containsKey(selected))
+                .forEach(cells -> list.addRow(new OptionRow(cells.get(selected), familyLabel(cells))));
+
+            return;
+        }
+
+        for (OptionRef ref : here) {
+            if (families.values().stream().noneMatch(cells -> cells.containsValue(ref))) {
+                list.addRow(new OptionRow(ref));
             }
         }
-    }
 
-    private void fillCategory(List<OptionRef> refs) {
-        List<OptionRef> section = sectionsOf(refs).getOrDefault(openSection, List.of());
-        List<OptionRef> members = section.stream()
-            .filter(ref -> belongs(ref, openFamily, openColumn))
-            .toList();
-        String crumb = sectionTitle(openSection) + " > " + humanize(openFamily) + " > " + openColumn.label().getString();
-
-        list.addRow(new BackRow(Component.literal(crumb)));
-
-        if (members.isEmpty()) {
-            list.addRow(new MessageRow(Component.translatable("mms_settings.opac.empty")));
+        if (!families.isEmpty()) {
+            Component text = Component.translatable("mms_settings.opac.by_category", families.size());
+            list.addRow(new FolderRow(text, () -> {
+                byCategory = true;
+                refill();
+            }));
         }
 
-        members.forEach(ref -> list.addRow(new OptionRow(ref, ref.name)));
+        childFolders(refs).forEach((name, count) -> {
+            List<String> next = new ArrayList<>(folder);
+            next.add(name);
+            list.addRow(new FolderRow(Component.literal(humanize(name) + " (" + count + ")  >"), () -> open(List.copyOf(next))));
+        });
     }
 
-    private static boolean belongs(OptionRef ref, String family, Column column) {
-        String segment = ref.lastSegment();
-        String name = column.key.substring(0, 1).toUpperCase(Locale.ROOT) + column.key.substring(1);
-
-        return segment.startsWith(family) && segment.contains(name);
-    }
-
-    private static Map<String, List<OptionRef>> sectionsOf(List<OptionRef> refs) {
-        Map<String, List<OptionRef>> sections = new LinkedHashMap<>();
+    private Map<String, Integer> childFolders(List<OptionRef> refs) {
+        Map<String, Integer> children = new TreeMap<>();
 
         for (OptionRef ref : refs) {
-            sections.computeIfAbsent(ref.section(), key -> new ArrayList<>()).add(ref);
+            List<String> parent = ref.path.subList(0, ref.path.size() - 1);
+
+            if (parent.size() > folder.size() && parent.subList(0, folder.size()).equals(folder)) {
+                children.merge(parent.get(folder.size()), 1, Integer::sum);
+            }
         }
 
-        return sections;
+        return children;
     }
 
     private static Map<String, EnumMap<Column, OptionRef>> familiesOf(List<OptionRef> refs) {
@@ -289,19 +276,11 @@ class OpacScreen extends Screen {
         return families;
     }
 
-    private void addSection(String key, List<OptionRef> refs, boolean searching) {
-        Map<String, EnumMap<Column, OptionRef>> families = searching ? Map.of() : familiesOf(refs);
+    private static String familyLabel(EnumMap<Column, OptionRef> cells) {
+        String name = cells.values().iterator().next().name.getString();
+        String stripped = CATEGORY_WORDS.matcher(name).replaceAll("").trim();
 
-        for (OptionRef ref : refs) {
-            boolean grouped = families.entrySet().stream()
-                .anyMatch(family -> family.getValue().keySet().stream().anyMatch(column -> belongs(ref, family.getKey(), column)));
-
-            if (!grouped) {
-                list.addRow(new OptionRow(ref, ref.name));
-            }
-        }
-
-        families.forEach((base, cells) -> list.addRow(new FamilyRow(key, base, cells.keySet())));
+        return stripped.isEmpty() ? name : stripped;
     }
 
     private static String humanize(String camel) {
@@ -314,18 +293,15 @@ class OpacScreen extends Screen {
         return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
     }
 
-    private static String sectionTitle(String key) {
-        if (key.isEmpty()) {
-            return Component.translatable("mms_settings.opac.general").getString();
-        }
-
+    private String crumb() {
         List<String> parts = new ArrayList<>();
+        folder.forEach(part -> parts.add(humanize(part)));
 
-        for (String part : key.split("\\.")) {
-            parts.add(humanize(part));
+        if (byCategory) {
+            parts.add(Component.translatable("mms_settings.opac.by_category_crumb").getString());
         }
 
-        return String.join(" / ", parts);
+        return String.join(" > ", parts);
     }
 
     @Override
@@ -356,17 +332,67 @@ class OpacScreen extends Screen {
         }
     }
 
-    private class HeaderRow extends RowList.Row {
-        private final Button toggle;
+    private class BackRow extends RowList.Row {
+        private final Button back;
+        private final String text = crumb();
 
-        HeaderRow(String key, int count, boolean open) {
-            String prefix = open ? "- " : "+ ";
-            this.toggle = add(
-                Button.builder(Component.literal(prefix + sectionTitle(key) + " (" + count + ")"), button -> {
-                    if (!expanded.remove(key)) {
-                        expanded.add(key);
+        BackRow() {
+            this.back = add(
+                Button.builder(
+                    Component.translatable("mms_settings.opac.back"),
+                    button -> {
+                        if (byCategory) {
+                            byCategory = false;
+                            refill();
+                        } else {
+                            open(folder.subList(0, folder.size() - 1));
+                        }
                     }
+                )
+                    .size(60, 20)
+                    .build()
+            );
+        }
 
+        @Override
+        protected void layout(int x, int y, int width, int height) {
+            back.setX(x);
+            back.setY(y);
+        }
+
+        @Override
+        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            String fitted = font.plainSubstrByWidth(text, width - 72);
+            graphics.drawString(font, fitted, x + 68, y + 6, 0xFFAAAAAA);
+        }
+    }
+
+    private class FolderRow extends RowList.Row {
+        private final Button button;
+
+        FolderRow(Component text, Runnable action) {
+            this.button = add(
+                Button.builder(text, pressed -> action.run())
+                    .size(RowList.ROW_WIDTH - 20, 20)
+                    .build()
+            );
+        }
+
+        @Override
+        protected void layout(int x, int y, int width, int height) {
+            button.setWidth(width);
+            button.setX(x);
+            button.setY(y);
+        }
+    }
+
+    private class SwitchRow extends RowList.Row {
+        private final Button button;
+
+        SwitchRow() {
+            this.button = add(
+                Button.builder(Component.translatable("mms_settings.opac.showing", selected.label()), pressed -> {
+                    selected = Column.values()[(selected.ordinal() + 1) % Column.values().length];
                     refill();
                 })
                     .size(RowList.ROW_WIDTH - 20, 20)
@@ -376,9 +402,9 @@ class OpacScreen extends Screen {
 
         @Override
         protected void layout(int x, int y, int width, int height) {
-            toggle.setWidth(width);
-            toggle.setX(x);
-            toggle.setY(y);
+            button.setWidth(width);
+            button.setX(x);
+            button.setY(y);
         }
     }
 
@@ -386,8 +412,12 @@ class OpacScreen extends Screen {
         private final Component label;
         private final List<AbstractWidget> controls;
 
-        OptionRow(OptionRef ref, Component label) {
-            this.label = label;
+        OptionRow(OptionRef ref) {
+            this(ref, ref.name.getString());
+        }
+
+        OptionRow(OptionRef ref, String label) {
+            this.label = Component.literal(label);
             this.controls = OptionControl.create(ref, VALUE_WIDTH, OpacScreen.this::onWriteFailed);
             controls.forEach(this::add);
         }
@@ -407,64 +437,6 @@ class OpacScreen extends Screen {
         protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
             String text = font.plainSubstrByWidth(label.getString(), width - VALUE_WIDTH - 8);
             graphics.drawString(font, text, x + 4, y + 6, 0xFFFFFFFF);
-        }
-    }
-
-    private class BackRow extends RowList.Row {
-        private final Button back;
-        private final Component crumb;
-
-        BackRow(Component crumb) {
-            this.crumb = crumb;
-            this.back = add(
-                Button.builder(Component.translatable("mms_settings.opac.back"), button -> {
-                    closeCategory();
-                    refill();
-                })
-                    .size(60, 20)
-                    .build()
-            );
-        }
-
-        @Override
-        protected void layout(int x, int y, int width, int height) {
-            back.setX(x);
-            back.setY(y);
-        }
-
-        @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
-            graphics.drawString(font, font.plainSubstrByWidth(crumb.getString(), width - 72), x + 68, y + 6, 0xFFFFFFFF);
-        }
-    }
-
-    private class FamilyRow extends RowList.Row {
-        private final String label;
-        private final Map<Column, Button> buttons = new EnumMap<>(Column.class);
-
-        FamilyRow(String section, String family, Set<Column> columns) {
-            this.label = humanize(family);
-            columns.forEach(column -> buttons.put(column, add(
-                Button.builder(column.label(), button -> openCategory(section, family, column))
-                    .size(CATEGORY_WIDTH, 20)
-                    .build()
-            )));
-        }
-
-        @Override
-        protected void layout(int x, int y, int width, int height) {
-            int start = x + width - (CATEGORY_WIDTH + CATEGORY_GAP) * Column.values().length + CATEGORY_GAP;
-
-            buttons.forEach((column, button) -> {
-                button.setX(start + column.ordinal() * (CATEGORY_WIDTH + CATEGORY_GAP));
-                button.setY(y);
-            });
-        }
-
-        @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
-            int room = width - (CATEGORY_WIDTH + CATEGORY_GAP) * Column.values().length - 4;
-            graphics.drawString(font, font.plainSubstrByWidth(label, room), x + 4, y + 6, 0xFFFFFFFF);
         }
     }
 }

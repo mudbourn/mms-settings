@@ -23,6 +23,8 @@ public class MmsSettingsClient implements ClientModInitializer {
             )
         );
 
+        Speedometer.register();
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openHub.consumeClick()) {
                 if (client.screen == null) {

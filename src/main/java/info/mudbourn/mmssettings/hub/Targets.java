@@ -48,6 +48,8 @@ final class Targets {
         }
 
         mod("bettercombat", "bettercombat", null, tiles);
+        mod("iris", "iris", "net.irisshaders.iris.gui.screen.ShaderPackScreen", tiles);
+        mod("distanthorizons", "distanthorizons", null, tiles);
         if (FabricLoader.getInstance().isModLoaded("mms_economy")) {
             tiles.add(new Tile(label("mms_economy"), Targets::economyHub, true));
         }
@@ -116,6 +118,10 @@ final class Targets {
             factory = Optional.of(Targets::xaeroSettings);
         }
 
+        if (modId.equals("distanthorizons") && factory.isEmpty()) {
+            factory = Optional.of(Targets::distantHorizonsSettings);
+        }
+
         factory.ifPresent(found -> tiles.add(new Tile(label(labelKey), found, false)));
     }
 
@@ -126,6 +132,16 @@ final class Targets {
             return (Screen) constructor.newInstance(parent);
         } catch (ReflectiveOperationException error) {
             throw new IllegalStateException("Cannot open " + className, error);
+        }
+    }
+
+    private static Screen distantHorizonsSettings(Screen parent) {
+        try {
+            Class<?> type = Class.forName("com.seibel.distanthorizons.common.wrappers.gui.GetConfigScreen");
+
+            return (Screen) type.getMethod("getScreen", Screen.class).invoke(null, parent);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot open Distant Horizons settings", error);
         }
     }
 
