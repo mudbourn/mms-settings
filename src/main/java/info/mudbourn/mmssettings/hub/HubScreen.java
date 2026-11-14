@@ -3,6 +3,8 @@ package info.mudbourn.mmssettings.hub;
 import java.util.List;
 
 import info.mudbourn.mmssettings.MmsSettings;
+import info.mudbourn.mmssettings.MmsSettingsClient;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -72,6 +74,16 @@ public class HubScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
         graphics.drawCenteredString(font, title, width / 2, 14, 0xFFFFFFFF);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        // Key mappings don't tick while a screen is open, so match the open bind here to close.
+        if (MmsSettingsClient.openHubKey().matches(event)) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(event);
     }
 
     @Override

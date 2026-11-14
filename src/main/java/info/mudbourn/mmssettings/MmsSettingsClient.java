@@ -12,6 +12,10 @@ import org.lwjgl.glfw.GLFW;
 public class MmsSettingsClient implements ClientModInitializer {
     private static KeyMapping openHub;
 
+    public static KeyMapping openHubKey() {
+        return openHub;
+    }
+
     @Override
     public void onInitializeClient() {
         openHub = KeyBindingHelper.registerKeyBinding(
