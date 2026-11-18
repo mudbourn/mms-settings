@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
+import com.mojang.blaze3d.Blaze3D;
 import info.mudbourn.mmssettings.MmsSettings;
 import info.mudbourn.mmssettings.ui.RowList;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Util;
 
 public class AllModsScreen extends Screen {
     private static final int ROW_HEIGHT = 24;
@@ -109,25 +109,25 @@ public class AllModsScreen extends Screen {
 
     private void open(Function<Screen, Screen> factory) {
         try {
-            minecraft.setScreen(factory.apply(this));
+            minecraft.gui.setScreen(factory.apply(this));
         } catch (Throwable error) {
             MmsSettings.LOGGER.warn("Config screen failed to open", error);
         }
     }
 
     private static void openFile(Path path) {
-        Util.getPlatform().openFile(path.toFile());
+        Blaze3D.openPath(path);
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
     }
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     private class LinkRow extends RowList.Row {
@@ -152,12 +152,12 @@ public class AllModsScreen extends Screen {
         }
 
         @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+        protected void paint(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
             int available = width - 70;
-            graphics.drawString(font, font.plainSubstrByWidth(label, available), x + 2, y + (detail.isEmpty() ? 6 : 1), 0xFFFFFFFF);
+            graphics.text(font, font.plainSubstrByWidth(label, available), x + 2, y + (detail.isEmpty() ? 6 : 1), 0xFFFFFFFF);
 
             if (!detail.isEmpty()) {
-                graphics.drawString(font, font.plainSubstrByWidth(detail, available), x + 2, y + 11, 0xFF888888);
+                graphics.text(font, font.plainSubstrByWidth(detail, available), x + 2, y + 11, 0xFF888888);
             }
         }
     }

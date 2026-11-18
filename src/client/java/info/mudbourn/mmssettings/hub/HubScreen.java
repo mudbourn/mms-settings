@@ -5,7 +5,7 @@ import java.util.List;
 import info.mudbourn.mmssettings.MmsSettings;
 import info.mudbourn.mmssettings.MmsSettingsClient;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -50,7 +50,7 @@ public class HubScreen extends Screen {
         addRenderableWidget(
             Button.builder(
                 Component.translatable("mms_settings.hub.all_mods"),
-                pressed -> minecraft.setScreen(new AllModsScreen(this))
+                pressed -> minecraft.gui.setScreen(new AllModsScreen(this))
             )
                 .bounds(width / 2 - 100, height - 50, 200, 20)
                 .build()
@@ -64,16 +64,16 @@ public class HubScreen extends Screen {
 
     private void open(Targets.Tile tile) {
         try {
-            minecraft.setScreen(tile.factory().apply(this));
+            minecraft.gui.setScreen(tile.factory().apply(this));
         } catch (Throwable error) {
             MmsSettings.LOGGER.warn("Could not open {}", tile.label().getString(), error);
         }
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, 14, 0xFFFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.centeredText(font, title, width / 2, 14, 0xFFFFFFFF);
     }
 
     @Override
@@ -88,6 +88,6 @@ public class HubScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 }

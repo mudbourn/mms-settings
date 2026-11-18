@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version '1.17.14'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 version = project.mod_version
@@ -9,27 +9,47 @@ base {
     archivesName = project.archives_base_name
 }
 
-repositories {
-    mavenCentral()
-    maven { url "https://maven.terraformersmc.com/releases/" }
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "mms_settings" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+configurations {
+    runtimeMods {
+        transitive = false
+    }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.4+1.21.11"
-    modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-    modCompileOnly files("libs/open-parties-and-claims-fabric-1.21.11-0.33.0.jar")
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    compileOnly files(
+        "libs/26.3/modmenu-${project.modmenu_version}.jar",
+        "libs/26.3/open-parties-and-claims-fabric-26.3-${project.opac_version}.jar"
+    )
+
+    // Dev runtime: Mod Menu, Open Parties and Claims and the config library it needs.
+    runtimeMods files(
+        "libs/26.3/modmenu-${project.modmenu_version}.jar",
+        "libs/26.3/open-parties-and-claims-fabric-26.3-${project.opac_version}.jar",
+        "libs/26.3/ForgeConfigAPIPort-v${project.forgeconfig_version}-mc26.3.x-Fabric.jar"
+    )
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 25
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
     withSourcesJar()
 }
 
@@ -50,12 +70,29 @@ jar {
 
 // Fails the build when a plain class sits in a mixin-owned package.
 def checkMixinPackages = tasks.register('checkMixinPackages', Exec) {
-    dependsOn tasks.named('remapJar')
+    dependsOn tasks.named('jar')
     doFirst {
         commandLine 'python3',
                 "$projectDir/gradle/scripts/check-mixin-packages.py",
-                tasks.named('remapJar').get().archiveFile.get().asFile
+                tasks.named('jar').get().archiveFile.get().asFile
     }
 }
 
 tasks.named('build') { dependsOn checkMixinPackages }
+
+// Copies the runtime mods into the dev run's mods folder.
+tasks.register("syncRuntimeMods") {
+    inputs.files(configurations.runtimeMods)
+    doLast {
+        copy {
+            from configurations.runtimeMods
+            into file("run/mods")
+        }
+    }
+}
+
+["runClient", "runServer"].each { runName ->
+    tasks.named(runName) {
+        dependsOn "syncRuntimeMods"
+    }
+}

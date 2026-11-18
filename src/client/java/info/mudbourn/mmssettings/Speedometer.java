@@ -1,12 +1,12 @@
 package info.mudbourn.mmssettings;
 
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.HumanoidArm;
@@ -30,7 +30,7 @@ final class Speedometer {
 
     static void register() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(
-            ClientCommandManager.literal("speedometer").executes(command -> {
+            ClientCommands.literal("speedometer").executes(command -> {
                 enabled = !enabled;
                 command.getSource().sendFeedback(Component.translatable(
                     enabled ? "mms_settings.speedometer.on" : "mms_settings.speedometer.off"
@@ -69,10 +69,10 @@ final class Speedometer {
         return total / SAMPLES * TICKS_PER_SECOND;
     }
 
-    private static void render(GuiGraphics graphics, DeltaTracker tickCounter) {
+    private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickCounter) {
         Minecraft client = Minecraft.getInstance();
 
-        if (!enabled || client.player == null || client.options.hideGui || client.player.isSpectator()) {
+        if (!enabled || client.player == null || client.gui.hud.isHidden() || client.player.isSpectator()) {
             return;
         }
 
@@ -84,6 +84,6 @@ final class Speedometer {
         boolean offhandLeft = client.player.getMainArm() == HumanoidArm.RIGHT;
         int x = offhandLeft ? center - offset - width : center + offset;
 
-        graphics.drawString(client.font, text, x, y, 0xFFFFFFFF);
+        graphics.text(client.font, text, x, y, 0xFFFFFFFF);
     }
 }

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 
@@ -40,11 +40,11 @@ public class RowList extends ContainerObjectSelectionList<RowList.Row> {
         protected void layout(int x, int y, int width, int height) {
         }
 
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+        protected void paint(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
         }
 
         @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             int x = getContentX();
             int y = getContentY();
             int w = getContentWidth();
@@ -52,7 +52,7 @@ public class RowList extends ContainerObjectSelectionList<RowList.Row> {
             layout(x, y, w, h);
             paint(graphics, x, y, w, h, mouseX, mouseY, hovered);
             for (AbstractWidget widget : widgets) {
-                widget.render(graphics, mouseX, mouseY, partialTick);
+                widget.extractRenderState(graphics, mouseX, mouseY, partialTick);
             }
         }
 

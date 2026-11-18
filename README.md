@@ -1,6 +1,6 @@
 # mms-settings
 
-Client-side Fabric mod for Minecraft 1.21.11. One "Modpack Settings" keybind
+Client-side Fabric mod for Minecraft 26.3. One "Modpack Settings" keybind
 (unbound by default) replaces the separate config keybinds of the pack's mods.
 
 ## Hub

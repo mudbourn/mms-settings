@@ -22,7 +22,7 @@ public abstract class ConfigMenuMixin extends Screen {
         addRenderableWidget(
             Button.builder(
                 Component.translatable("mms_settings.opac.view_button"),
-                button -> Minecraft.getInstance().setScreen(OpacScreens.create(this))
+                button -> Minecraft.getInstance().gui.setScreen(OpacScreens.create(this))
             )
                 .bounds(6, 6, 80, 20)
                 .build()

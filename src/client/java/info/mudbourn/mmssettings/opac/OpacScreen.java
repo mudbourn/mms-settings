@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import info.mudbourn.mmssettings.ui.RowList;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -305,18 +305,18 @@ class OpacScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, 8, 0xFFFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
 
         if (writeFailed || OpacWriter.hasFailed()) {
-            graphics.drawCenteredString(font, Component.translatable("mms_settings.opac.write_failed"), width / 2, height - 38, 0xFFFF5555);
+            graphics.centeredText(font, Component.translatable("mms_settings.opac.write_failed"), width / 2, height - 38, 0xFFFF5555);
         }
     }
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     private class MessageRow extends RowList.Row {
@@ -327,8 +327,8 @@ class OpacScreen extends Screen {
         }
 
         @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
-            graphics.drawCenteredString(font, message, x + width / 2, y + 6, 0xFFAAAAAA);
+        protected void paint(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            graphics.centeredText(font, message, x + width / 2, y + 6, 0xFFAAAAAA);
         }
     }
 
@@ -361,9 +361,9 @@ class OpacScreen extends Screen {
         }
 
         @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+        protected void paint(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
             String fitted = font.plainSubstrByWidth(text, width - 72);
-            graphics.drawString(font, fitted, x + 68, y + 6, 0xFFAAAAAA);
+            graphics.text(font, fitted, x + 68, y + 6, 0xFFAAAAAA);
         }
     }
 
@@ -434,9 +434,9 @@ class OpacScreen extends Screen {
         }
 
         @Override
-        protected void paint(GuiGraphics graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+        protected void paint(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
             String text = font.plainSubstrByWidth(label.getString(), width - VALUE_WIDTH - 8);
-            graphics.drawString(font, text, x + 4, y + 6, 0xFFFFFFFF);
+            graphics.text(font, text, x + 4, y + 6, 0xFFFFFFFF);
         }
     }
 }
