@@ -21,7 +21,7 @@ public class MmsSettingsClient implements ClientModInitializer {
             new KeyMapping(
                 "key.mms_settings.open_hub",
                 InputConstants.KEY_SEMICOLON,
-                KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MmsSettings.MOD_ID, "main"))
+                mmsCategory()
             )
         );
 
@@ -34,5 +34,14 @@ public class MmsSettingsClient implements ClientModInitializer {
                 }
             }
         });
+    }
+    // The shared MMS controls category. Every mms mod registers it, and the first one wins.
+    private static KeyMapping.Category mmsCategory() {
+        Identifier id = Identifier.fromNamespaceAndPath("mms", "main");
+        try {
+            return KeyMapping.Category.register(id);
+        } catch (IllegalArgumentException alreadyRegistered) {
+            return new KeyMapping.Category(id);
+        }
     }
 }
