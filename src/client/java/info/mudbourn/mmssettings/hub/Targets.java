@@ -58,6 +58,11 @@ final class Targets {
             tiles.add(new Tile(label("loadout"), Targets::loadout, true));
         }
 
+        if (FabricLoader.getInstance().isModLoaded("mms_weapons")) {
+            tiles.add(new Tile(label("spell_binds"),
+                parent -> construct("info.mudbourn.mmsweapons.client.spellengine.SpellBindsScreen", parent), true));
+        }
+
         tiles.add(new Tile(label("controls"), parent -> new KeyBindsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("sounds"), parent -> new SoundOptionsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("video"), parent -> new VideoSettingsScreen(parent, Minecraft.getInstance(), Minecraft.getInstance().options), false));
