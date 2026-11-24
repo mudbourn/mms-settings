@@ -5,20 +5,21 @@ import java.util.List;
 import info.mudbourn.mmssettings.MmsSettings;
 import info.mudbourn.mmssettings.MmsSettingsClient;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.layouts.GridLayout;
+import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 public class HubScreen extends Screen {
-    private static final int TILE_WIDTH = 160;
-    private static final int TILE_HEIGHT = 28;
-    private static final int GAP = 6;
-    private static final int TOP = 36;
+    private static final int COLUMNS = 2;
+    private static final int FOOTER_SPACING = 8;
 
     private final Screen parent;
+    private final HeaderAndFooterLayout layout = new HeaderAndFooterLayout(this);
 
     public HubScreen(Screen parent) {
         super(Component.translatable("mms_settings.hub.title"));
@@ -27,39 +28,46 @@ public class HubScreen extends Screen {
 
     @Override
     protected void init() {
+        layout.addTitleHeader(title, font);
+
+        GridLayout grid = new GridLayout();
+        grid.defaultCellSetting().paddingHorizontal(4).paddingBottom(4).alignHorizontallyCenter();
+        GridLayout.RowHelper rows = grid.createRowHelper(COLUMNS);
         List<Targets.Tile> tiles = Targets.resolve();
-        int left = width / 2 - TILE_WIDTH - GAP / 2;
-        int index = 0;
-
-        for (Targets.Tile tile : tiles) {
-            int x = left + (index % 2) * (TILE_WIDTH + GAP);
-            int y = TOP + (index / 2) * (TILE_HEIGHT + GAP);
-            Button button = Button.builder(tile.label(), pressed -> open(tile))
-                .bounds(x, y, TILE_WIDTH, TILE_HEIGHT)
-                .build();
-
-            if (tile.needsWorld() && minecraft.level == null) {
-                button.active = false;
-                button.setTooltip(Tooltip.create(Component.translatable("mms_settings.hub.needs_world")));
-            }
-
-            addRenderableWidget(button);
-            index++;
+        for (int index = 0; index < tiles.size(); index++) {
+            boolean lastOfOdd = index == tiles.size() - 1 && tiles.size() % COLUMNS != 0;
+            rows.addChild(tileButton(tiles.get(index), lastOfOdd), lastOfOdd ? COLUMNS : 1);
         }
+        layout.addToContents(grid);
 
-        addRenderableWidget(
-            Button.builder(
-                Component.translatable("mms_settings.hub.all_mods"),
-                pressed -> minecraft.gui.setScreen(new AllModsScreen(this))
-            )
-                .bounds(width / 2 - 100, height - 50, 200, 20)
-                .build()
-        );
-        addRenderableWidget(
-            Button.builder(CommonComponents.GUI_DONE, pressed -> onClose())
-                .bounds(width / 2 - 100, height - 26, 200, 20)
-                .build()
-        );
+        LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(FOOTER_SPACING));
+        footer.addChild(Button.builder(
+            Component.translatable("mms_settings.hub.all_mods"),
+            pressed -> minecraft.gui.setScreen(new AllModsScreen(this))
+        ).build());
+        footer.addChild(Button.builder(CommonComponents.GUI_DONE, pressed -> onClose()).build());
+
+        layout.visitWidgets(this::addRenderableWidget);
+        repositionElements();
+    }
+
+    @Override
+    protected void repositionElements() {
+        layout.arrangeElements();
+    }
+
+    // Builds a tile button, as wide as both columns when full width.
+    private Button tileButton(Targets.Tile tile, boolean fullWidth) {
+        Button.Builder builder = Button.builder(tile.label(), pressed -> open(tile));
+        if (fullWidth) {
+            builder.width(Button.DEFAULT_WIDTH * COLUMNS + 8);
+        }
+        Button button = builder.build();
+        if (tile.needsWorld() && minecraft.level == null) {
+            button.active = false;
+            button.setTooltip(Tooltip.create(Component.translatable("mms_settings.hub.needs_world")));
+        }
+        return button;
     }
 
     private void open(Targets.Tile tile) {
@@ -68,12 +76,6 @@ public class HubScreen extends Screen {
         } catch (Throwable error) {
             MmsSettings.LOGGER.warn("Could not open {}", tile.label().getString(), error);
         }
-    }
-
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        graphics.centeredText(font, title, width / 2, 14, 0xFFFFFFFF);
     }
 
     @Override
