@@ -1,6 +1,7 @@
 package info.mudbourn.mmssettings.hub;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +64,10 @@ final class Targets {
                 parent -> construct("info.mudbourn.mmsweapons.client.spellengine.SpellBindsScreen", parent), true));
         }
 
+        if (FabricLoader.getInstance().isModLoaded("essential")) {
+            tiles.add(new Tile(label("emotes"), Targets::essentialEmotes, false));
+        }
+
         tiles.add(new Tile(label("controls"), parent -> new KeyBindsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("sounds"), parent -> new SoundOptionsScreen(parent, Minecraft.getInstance().options), false));
         tiles.add(new Tile(label("video"), parent -> new VideoSettingsScreen(parent, Minecraft.getInstance(), Minecraft.getInstance().options), false));
@@ -86,6 +91,34 @@ final class Targets {
     // Runs /loadout so the server opens the loadout screen, and closes this one.
     private static Screen loadout(Screen parent) {
         Minecraft.getInstance().player.connection.sendCommand("loadout");
+        return null;
+    }
+
+    // Asks Essential to open its wardrobe on the emote wheel editor, and closes this one.
+    private static Screen essentialEmotes(Screen parent) {
+        try {
+            Class<?> wardrobe = Class.forName("gg.essential.gui.wardrobe.Wardrobe");
+            Class<?> category = Class.forName("gg.essential.gui.wardrobe.WardrobeCategory");
+            Object emotes = Class.forName("gg.essential.gui.wardrobe.WardrobeCategory$Emotes").getField("INSTANCE").get(null);
+            Constructor<?> constructor = wardrobe.getConstructor(category, boolean.class);
+            Class<?> function0 = Class.forName("kotlin.jvm.functions.Function0");
+            Object factory = Proxy.newProxyInstance(
+                function0.getClassLoader(),
+                new Class<?>[] {function0},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "invoke" -> constructor.newInstance(emotes, true);
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    default -> "EssentialEmotesFactory";
+                }
+            );
+
+            Class.forName("gg.essential.util.GuiUtil")
+                .getMethod("openScreen", Class.class, function0)
+                .invoke(null, wardrobe, factory);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot open Essential's emote editor", error);
+        }
         return null;
     }
 
