@@ -55,6 +55,10 @@ final class Targets {
             tiles.add(new Tile(label("mms_economy"), Targets::economyHub, true));
         }
 
+        if (FabricLoader.getInstance().isModLoaded("mms_dungeons")) {
+            tiles.add(new Tile(label("adventurer"), AdventurerToolsScreen::new, true));
+        }
+
         if (FabricLoader.getInstance().isModLoaded("mms_combat")) {
             tiles.add(new Tile(label("loadout"), Targets::loadout, true));
         }
@@ -73,6 +77,24 @@ final class Targets {
         tiles.add(new Tile(label("video"), parent -> new VideoSettingsScreen(parent, Minecraft.getInstance(), Minecraft.getInstance().options), false));
 
         return tiles;
+    }
+
+    static List<Tile> adventurerTools() {
+        return List.of(
+            new Tile(
+                label("my_bounties"),
+                parent -> construct("info.mudbourn.mmsdungeons.client.guild.MyBountiesScreen", parent),
+                true
+            ),
+            new Tile(label("guild_info"), parent -> command("guild info"), true),
+            new Tile(label("guild_list"), parent -> command("guild list"), true)
+        );
+    }
+
+    // Runs a command whose reply lands in chat, and closes this screen.
+    private static Screen command(String command) {
+        Minecraft.getInstance().player.connection.sendCommand(command);
+        return null;
     }
 
     // Asks the server for economy's hub and closes this one.
