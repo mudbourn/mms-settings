@@ -86,15 +86,12 @@ final class Targets {
                 parent -> construct("info.mudbourn.mmsdungeons.client.guild.MyBountiesScreen", parent),
                 true
             ),
-            new Tile(label("guild_info"), parent -> command("guild info"), true),
-            new Tile(label("guild_list"), parent -> command("guild list"), true)
+            new Tile(
+                label("guilds"),
+                parent -> construct("info.mudbourn.mmsdungeons.client.guild.GuildMenuScreen", parent),
+                true
+            )
         );
-    }
-
-    // Runs a command whose reply lands in chat, and closes this screen.
-    private static Screen command(String command) {
-        Minecraft.getInstance().player.connection.sendCommand(command);
-        return null;
     }
 
     // Asks the server for economy's hub and closes this one.
