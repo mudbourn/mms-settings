@@ -1,5 +1,7 @@
 package info.mudbourn.mmssettings.hub;
 
+import net.fabricmc.loader.api.FabricLoader;
+import com.terraformersmc.modmenu.api.ModMenuApi;
 import java.util.List;
 
 import info.mudbourn.mmssettings.MmsSettings;
@@ -41,10 +43,12 @@ public class HubScreen extends Screen {
         layout.addToContents(grid);
 
         LinearLayout footer = layout.addToFooter(LinearLayout.horizontal().spacing(FOOTER_SPACING));
-        footer.addChild(Button.builder(
-            Component.translatable("mms_settings.hub.all_mods"),
-            pressed -> minecraft.gui.setScreen(new AllModsScreen(this))
-        ).build());
+        if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+            footer.addChild(Button.builder(
+                Component.translatable("mms_settings.hub.all_mods"),
+                pressed -> minecraft.gui.setScreen(ModMenuApi.createModsScreen(this))
+            ).build());
+        }
         footer.addChild(Button.builder(CommonComponents.GUI_DONE, pressed -> onClose()).build());
 
         layout.visitWidgets(this::addRenderableWidget);

@@ -27,6 +27,23 @@ final class Targets {
     static List<Tile> resolve() {
         List<Tile> tiles = new ArrayList<>();
 
+        if (FabricLoader.getInstance().isModLoaded("mms_economy")) {
+            tiles.add(new Tile(label("mms_economy"), Targets::economyHub, true));
+        }
+
+        if (FabricLoader.getInstance().isModLoaded("mms_combat")) {
+            tiles.add(new Tile(label("loadout"), Targets::loadout, true));
+        }
+
+        if (FabricLoader.getInstance().isModLoaded("mms_weapons")) {
+            tiles.add(new Tile(label("spell_binds"),
+                parent -> construct("info.mudbourn.mmsweapons.client.spellengine.SpellBindsScreen", parent), true));
+        }
+
+        if (FabricLoader.getInstance().isModLoaded("mms_dungeons")) {
+            tiles.add(new Tile(label("adventurer"), AdventurerToolsScreen::new, true));
+        }
+
         if (MmsSettings.opacLoaded()) {
             tiles.add(new Tile(label("opac"), OpacScreens::create, false));
         }
@@ -51,22 +68,6 @@ final class Targets {
         mod("bettercombat", "bettercombat", null, tiles);
         mod("iris", "iris", "net.irisshaders.iris.gui.screen.ShaderPackScreen", tiles);
         mod("distanthorizons", "distanthorizons", null, tiles);
-        if (FabricLoader.getInstance().isModLoaded("mms_economy")) {
-            tiles.add(new Tile(label("mms_economy"), Targets::economyHub, true));
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("mms_dungeons")) {
-            tiles.add(new Tile(label("adventurer"), AdventurerToolsScreen::new, true));
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("mms_combat")) {
-            tiles.add(new Tile(label("loadout"), Targets::loadout, true));
-        }
-
-        if (FabricLoader.getInstance().isModLoaded("mms_weapons")) {
-            tiles.add(new Tile(label("spell_binds"),
-                parent -> construct("info.mudbourn.mmsweapons.client.spellengine.SpellBindsScreen", parent), true));
-        }
 
         if (FabricLoader.getInstance().isModLoaded("essential")) {
             tiles.add(new Tile(label("emotes"), Targets::essentialEmotes, false));
